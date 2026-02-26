@@ -128,7 +128,7 @@ else:
         df_h_disp["PALET"] = df_h_disp["PALET"].map(lambda x: f"{int(x)}")
         
         st.subheader("📜 Son 10 Stok Hareketi")
-        st.table(df_h_disp)
+        st.dataframe(df_h_disp, use_container_width=True, hide_index=True)
 
     if st.button("🔄 Verileri Yenile"):
         st.rerun()
