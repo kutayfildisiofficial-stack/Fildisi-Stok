@@ -126,16 +126,41 @@ with tab_stok:
     st.divider()
     
     # STOK TABLOSU
-    st.subheader("GÜNCEL STOK DURUMU")
-    display_data = []
-    t_kg, t_palet, t_val = 0, 0, 0
-    for _, r in df_stok.iterrows():
-        kg, palet, fiyat = r['kg'] or 0, r['palet'] or 0, r['satis_fiyati'] or 0
-        val = kg * fiyat
-        t_kg += kg; t_palet += palet; t_val += val
-        display_data.append([r['ad'], r['kalibre'], f"%{r['glaze']}", f"{kg:,.0f}".replace(",", "."), int(palet), format_tl(fiyat), format_tl(val)])
+st.subheader("GÜNCEL STOK DURUMU")
+display_data = []
+t_kg, t_palet, t_val = 0, 0, 0
+
+for _, r in df_stok.iterrows():
+    # Verileri güvenli bir şekilde alalım
+    kg = r['kg'] or 0
+    palet = r['palet'] or 0
+    fiyat = r['satis_fiyati'] or 0
+    val = kg * fiyat
     
-    st.dataframe(pd.DataFrame(display_data, columns=["ÜRÜN ADI", "KALİBRE", "GLAZE", "STOK (KG)", "PALET", "BİRİM FİYAT", "TOPLAM DEĞER"]), use_container_width=True)
+    # Toplamları hesaplayalım
+    t_kg += kg
+    t_palet += palet
+    t_val += val
+    
+    # İstediğin birleşik format: ÜRÜN ADI - KALİBRE (%GLAZE)
+    urun_detay = f"{r['ad']} - {r['kalibre']} (%{r['glaze']})"
+    
+    # Yeni sütun yapısına göre veriyi listeye ekle
+    display_data.append([
+        urun_detay, 
+        f"{kg:,.0f}".replace(",", "."), 
+        int(palet), 
+        format_tl(fiyat), 
+        format_tl(val)
+    ])
+
+# Tabloyu oluştururken sütun başlıklarını da güncelliyoruz
+df_final = pd.DataFrame(
+    display_data, 
+    columns=["ÜRÜN DETAY", "STOK (KG)", "PALET", "BİRİM FİYAT", "TOPLAM DEĞER"]
+)
+
+st.dataframe(df_final, use_container_width=True, hide_index=True)"]), use_container_width=True)
 
 
 # ==========================================
@@ -329,6 +354,7 @@ with tab_yedek:
                     c.commit(); c.close(); st.success("Veriler başarıyla geri yüklendi!"); st.rerun()
                 except Exception as e:
                     st.error(f"Geri Yükleme Hatası: {e}")
+
 
 
 
