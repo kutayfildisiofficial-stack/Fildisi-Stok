@@ -52,7 +52,7 @@ def get_data():
         return None, str(e)
 
 # --- ANA UYGULAMA AKIŞI ---
-st.subheader("📝 STOK DURUMU")
+st.subheader("📝 GÜNCEL STOK VERİLERİ")
 
 # Verileri çek
 df_stok, df_hareket_veya_hata = get_data()
