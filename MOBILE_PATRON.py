@@ -86,7 +86,7 @@ else:
     # Sadece gerekli sütunları seçip sıralıyoruz
     df_display = df_display[["ÜRÜN BİLGİSİ", "STOK (KG)", "PALET", "BİRİM FİYAT", "TOPLAM DEĞER"]]
 
-    # Formatlama işlemleri
+    # Formatlama işlemleri (Ekran görüntüsü için)
     df_display["STOK (KG)"] = df_display["STOK (KG)"].apply(lambda x: f"{x:,.0f}".replace(",", "."))
     df_display["BİRİM FİYAT"] = df_display["BİRİM FİYAT"].apply(lambda x: f"₺{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
     df_display["TOPLAM DEĞER"] = df_display["TOPLAM DEĞER"].apply(lambda x: f"₺{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
@@ -104,15 +104,24 @@ else:
     for _, row in df_stok.iterrows():
         # Satırda Ürün Detayını Oluştur
         urun_detay = f"{row['ÜRÜN ADI']} - {row['KALİBRE']} (%{row['GLAZE']})"
+        
+        # Sayısal Değerleri TR Formatına Çevirme
+        kg_str = f"{row['STOK (KG)']:,.0f}".replace(",", ".")
+        # TL Simgesi eklenmiş ve virgül/nokta düzenlenmiş değer
+        deger_str = f"₺{row['TOPLAM DEĞER']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        
         writer.writerow([
             urun_detay, 
-            int(row["STOK (KG)"]), 
+            kg_str, 
             int(row["PALET"]), 
-            f"{row['TOPLAM DEĞER']:.2f}".replace(".", ",")
+            deger_str
         ])
     
     # Toplam Satırı
-    writer.writerow(["TOPLAM", int(t_kg), int(t_palet), f"{t_val:.2f}".replace(".", ",")])
+    t_kg_str = f"{t_kg:,.0f}".replace(",", ".")
+    t_val_str = f"₺{t_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    
+    writer.writerow(["TOPLAM", t_kg_str, int(t_palet), t_val_str])
 
     st.download_button(
         label="📥 Excel'e Aktar (CSV)",
