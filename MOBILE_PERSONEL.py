@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import psycopg2
-from datetime import datetime
+from datetime import datetime, timedelta, timezone # timedelta ve timezone eklendi
 import io
 import csv
 import json
@@ -11,6 +11,11 @@ DB_URI = "postgresql://neondb_owner:npg_CuvX8ByQ5oFk@ep-cool-rain-abpiie2h-poole
 
 def get_conn():
     return psycopg2.connect(DB_URI)
+
+# --- Türkiye Saati Fonksiyonu ---
+def get_tr_now():
+    """Türkiye yerel saatini (UTC+3) döndürür."""
+    return datetime.now(timezone(timedelta(hours=3)))
 
 # --- Format Fonksiyonları (Birebir Aynı) ---
 def safe_float(val):
@@ -44,7 +49,7 @@ if not st.session_state.logged_in:
 # --- ANA UYGULAMA (GİRİŞ BAŞARILI) ---
 st.title("🐘 FİLDİŞİ GRUP - PERSONEL STOK TAKİP")
 
-# Tüm Sekmeler (Tkinter Frame'lerine Karşılık)
+# Tüm Sekmeler
 tab_stok, tab_yonetim, tab_rapor, tab_gecmis, tab_yedek = st.tabs([
     "📦 Stok & Giriş/Çıkış", 
     "⚙️ Yönetim (Ürün/Kalibre)", 
@@ -53,7 +58,7 @@ tab_stok, tab_yonetim, tab_rapor, tab_gecmis, tab_yedek = st.tabs([
     "💾 Yedekleme"
 ])
 
-# Veri Çekme İşlemleri (load_data ve load_stok)
+# Veri Çekme İşlemleri
 conn = get_conn()
 df_urun = pd.read_sql("SELECT id, ad FROM urun ORDER BY ad", conn)
 df_kalibre = pd.read_sql("SELECT u.ad as u_ad, k.kalibre, k.glaze, k.satis_fiyati, k.id as k_id FROM kalibre k JOIN urun u ON u.id=k.urun_id ORDER BY u.ad", conn)
@@ -90,7 +95,8 @@ with tab_stok:
         if not secili_kalibre or (kg <= 0 and palet <= 0): return
         
         k_id = kalibre_dict[secili_kalibre]
-        tarih, saat = datetime.now().strftime("%d-%m-%Y"), datetime.now().strftime("%H:%M:%S")
+        # Zaman Türkiye saati olarak ayarlandı
+        tarih, saat = get_tr_now().strftime("%d-%m-%Y"), get_tr_now().strftime("%H:%M:%S")
         
         c = get_conn(); cursor = c.cursor()
         if tip == "Giriş":
@@ -120,7 +126,7 @@ with tab_stok:
 
     st.divider()
     
-    # STOK TABLOSU (Treeview Karşılığı)
+    # STOK TABLOSU
     st.subheader("GÜNCEL STOK DURUMU")
     display_data = []
     t_kg, t_palet, t_val = 0, 0, 0
@@ -201,19 +207,20 @@ with tab_yonetim:
 with tab_rapor:
     st.subheader("📄 EKSTRELER")
     
-    # CSV Rapor (Birebir Aynı)
+    # CSV Rapor
     output = io.StringIO()
     writer = csv.writer(output, delimiter=";")
     writer.writerow(["ÜRÜN ADI", "KALİBRE", "GLAZE", "STOK (KG)", "PALET", "TOPLAM DEĞER"])
-    for row in display_data: # display_data tab_stok içinde hesaplandı
+    for row in display_data:
         writer.writerow([row[0], row[1], row[2], row[3], row[4], row[6]])
     writer.writerow([])
     writer.writerow(["TOPLAM", "", "", f"{t_kg:,.0f}".replace(",", "."), int(t_palet), format_tl(t_val)])
     
-    st.download_button("📊 EKSTRE (CSV) İNDİR", data=output.getvalue().encode('utf-8-sig'), file_name=f"Depo_Ekstre_{datetime.now().strftime('%Y%m%d_%H%M')}.csv")
+    # Dosya ismine Türkiye saati eklendi
+    st.download_button("📊 EKSTRE (CSV) İNDİR", data=output.getvalue().encode('utf-8-sig'), file_name=f"Depo_Ekstre_{get_tr_now().strftime('%Y%m%d_%H%M')}.csv")
     
     st.write("")
-    # Ekran Rapor (Courier New fontlu Text widget karşılığı)
+    # Ekran Rapor
     if st.button("📄 EKSTRE (EKRAN) GÖSTER"):
         rapor_metni = f"{'ÜRÜN ADI':<20} | {'KALİBRE':<10} | {'GLAZE':<6} | {'STOK (KG)':>12} | {'PALET':>6} | {'TOPLAM DEĞER':>18}\n"
         rapor_metni += "-"*105 + "\n"
@@ -241,7 +248,6 @@ with tab_gecmis:
                           FROM stok_hareket h JOIN kalibre k ON k.id=h.kalibre_id JOIN urun u ON u.id=k.urun_id ORDER BY h.id DESC""", c)
     c.close()
     
-    # DataFrame'i % işareti ve virgül ile formatlama (Görsel için)
     h_df_disp = h_df.copy()
     h_df_disp["GLAZE"] = h_df_disp["GLAZE"].map(lambda x: f"%{x}")
     h_df_disp["STOK (KG)"] = h_df_disp["STOK (KG)"].map(lambda x: f"{x:,.0f}".replace(",", "."))
@@ -287,7 +293,8 @@ with tab_yedek:
             c.close()
             
             j_data = json.dumps(yedek_verisi, ensure_ascii=False, indent=4, default=str)
-            dosya_adi = f"Fildisi_Grup_Yedek_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
+            # Dosya ismine Türkiye saati eklendi
+            dosya_adi = f"Fildisi_Grup_Yedek_{get_tr_now().strftime('%Y%m%d_%H%M')}.json"
             st.download_button("Dosyayı İndir", data=j_data, file_name=dosya_adi, mime="application/json")
 
     with c2:
@@ -300,11 +307,9 @@ with tab_yedek:
                     yedek = json.load(yuklenen_dosya)
                     c = get_conn(); cur = c.cursor()
                     
-                    # Tabloları temizle
                     for tablo in ["stok_hareket", "lot", "kalibre", "urun"]:
                         cur.execute(f"TRUNCATE TABLE {tablo} RESTART IDENTITY CASCADE")
                     
-                    # Verileri ekle
                     for r in yedek.get("urun", []):
                         cur.execute("INSERT INTO urun (id, ad) VALUES (%s, %s)", (r['id'], r['ad']))
                         
