@@ -120,8 +120,8 @@ with tab_stok:
         c.commit(); c.close()
         st.success(f"{tip} Başarılı!"); st.rerun()
 
-    if col_g.button("📥 Stok Giriş", use_container_width=True): hareket("Giriş")
-    if col_c.button("📤 Stok Çıkış", use_container_width=True): hareket("Çıkış")
+    if col_g.button("📥 GİRİŞ", use_container_width=True): hareket("Giriş")
+    if col_c.button("📤 ÇIKIŞ", use_container_width=True): hareket("Çıkış")
 
     st.divider()
     
@@ -326,3 +326,4 @@ with tab_yedek:
                     c.commit(); c.close(); st.success("Veriler başarıyla geri yüklendi!"); st.rerun()
                 except Exception as e:
                     st.error(f"Geri Yükleme Hatası: {e}")
+
