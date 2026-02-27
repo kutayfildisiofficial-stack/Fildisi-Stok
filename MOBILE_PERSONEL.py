@@ -51,11 +51,11 @@ st.subheader("STOK YÖNETİM PANELİ")
 
 # Tüm Sekmeler
 tab_stok, tab_yonetim, tab_rapor, tab_gecmis, tab_yedek = st.tabs([
-    "📦 Stok Giriş/Çıkış", 
-    "⚙️ Ürün/Kalibre Tanımları", 
-    "📊 Ekstreler", 
-    "📜 Hareket Geçmişi", 
-    "💾 Yedekleme"
+    "📦 STOK GİRİŞ/ÇIKIŞ", 
+    "⚙️ ÜRÜN/KALİBRE TANIMLARI", 
+    "📊 RAPORLAR", 
+    "📜 HAREKET GEÇMİŞİ", 
+    "💾 YEDEK"
 ])
 
 # Veri Çekme İşlemleri
@@ -330,6 +330,7 @@ with tab_yedek:
                     c.commit(); c.close(); st.success("Veriler başarıyla geri yüklendi!"); st.rerun()
                 except Exception as e:
                     st.error(f"Geri Yükleme Hatası: {e}")
+
 
 
 
