@@ -1,9 +1,14 @@
 import streamlit as st
 import pandas as pd
 import psycopg2
-from datetime import datetime
+from datetime import datetime, timedelta, timezone  # timedelta ve timezone eklendi
 import io
 import csv
+
+# --- Türkiye Saati Fonksiyonu ---
+def get_tr_now():
+    """Türkiye yerel saatini (UTC+3) döndürür."""
+    return datetime.now(timezone(timedelta(hours=3)))
 
 # Sayfa Yapılandırması
 st.set_page_config(page_title="FİLDİŞİ GRUP - STOK", layout="wide")
@@ -76,7 +81,7 @@ else:
 
         # --- EKRAN İÇİN GÖRSEL TABLO (GLAZE %50 YAPILDI) ---
         df_display = df_stok.copy()
-        df_display["GLAZE"] = df_display["GLAZE"].map(lambda x: f"%{x}") # İSTEK: %50 formatı
+        df_display["GLAZE"] = df_display["GLAZE"].map(lambda x: f"%{x}") 
         df_display["STOK (KG)"] = df_display["STOK (KG)"].map(lambda x: f"{x:,.0f}".replace(",", "."))
         df_display["PALET"] = df_display["PALET"].map(lambda x: f"{int(x)}")
         df_display["BİRİM FİYAT"] = df_display["BİRİM FİYAT"].map(lambda x: f"₺{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
@@ -85,24 +90,22 @@ else:
         st.subheader("📊 Güncel Stok Durumu")
         st.dataframe(df_display, use_container_width=True)
 
-        # --- CSV HAZIRLAMA (GÖRSEL image_5fbbdc.png UYUMLU) ---
+        # --- CSV HAZIRLAMA ---
         output = io.StringIO()
         writer = csv.writer(output, delimiter=";")
         
-        # Başlıklar (Görseldeki gibi Birim Fiyat yok)
         writer.writerow(["ÜRÜN ADI", "KALİBRE", "GLAZE", "STOK (KG)", "PALET", "TOPLAM DEĞER"])
         
         for _, row in df_stok.iterrows():
             writer.writerow([
                 row["ÜRÜN ADI"], 
                 row["KALİBRE"], 
-                f"%{row['GLAZE']}", # Excel'de %50 görünümü
-                f"{row['STOK (KG)']:,.0f}".replace(",", ""), # Excel sayı olarak tanısın
+                f"%{row['GLAZE']}", 
+                f"{row['STOK (KG)']:,.0f}".replace(",", ""), 
                 int(row["PALET"]), 
                 f"₺{row['TOPLAM DEĞER']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             ])
             
-        # Görseldeki gibi bir boşluk satırı ve TOPLAM satırı
         writer.writerow([])
         writer.writerow([
             "TOPLAM", 
@@ -116,7 +119,7 @@ else:
         st.download_button(
             label="📥 Excel'e Aktar (CSV)",
             data=output.getvalue().encode('utf-8-sig'),
-            file_name=f"Fildisi_Stok_Rapor_{datetime.now().strftime('%d_%m_%Y')}.csv",
+            file_name=f"Fildisi_Stok_Rapor_{get_tr_now().strftime('%d_%m_%Y')}.csv", # get_tr_now eklendi
             mime="text/csv",
         )
 
@@ -134,3 +137,4 @@ else:
         st.rerun()
 
     st.caption("Copyright © 2026 - Kutay Fildişi - Tüm hakları saklıdır.")
+    
