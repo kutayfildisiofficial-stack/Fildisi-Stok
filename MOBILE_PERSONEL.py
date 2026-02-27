@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import psycopg2
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 import io
 import csv
 import json
@@ -9,13 +9,10 @@ import json
 # --- PostgreSQL Bağlantı Bilgileri ---
 DB_URI = "postgresql://neondb_owner:npg_CuvX8ByQ5oFk@ep-cool-rain-abpiie2h-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require"
 
-# Türkiye Saati (GMT+3) Tanımlaması
-tr_tz = timezone(timedelta(hours=3))
-
 def get_conn():
     return psycopg2.connect(DB_URI)
 
-# --- Format Fonksiyonları ---
+# --- Format Fonksiyonları (Birebir Aynı) ---
 def safe_float(val):
     try: return float(str(val).replace(",", "."))
     except: return 0.0
@@ -47,7 +44,7 @@ if not st.session_state.logged_in:
 # --- ANA UYGULAMA (GİRİŞ BAŞARILI) ---
 st.title("🐘 FİLDİŞİ GRUP - PERSONEL STOK TAKİP")
 
-# Tüm Sekmeler
+# Tüm Sekmeler (Tkinter Frame'lerine Karşılık)
 tab_stok, tab_yonetim, tab_rapor, tab_gecmis, tab_yedek = st.tabs([
     "📦 Stok & Giriş/Çıkış", 
     "⚙️ Yönetim (Ürün/Kalibre)", 
@@ -56,7 +53,7 @@ tab_stok, tab_yonetim, tab_rapor, tab_gecmis, tab_yedek = st.tabs([
     "💾 Yedekleme"
 ])
 
-# Veri Çekme İşlemleri
+# Veri Çekme İşlemleri (load_data ve load_stok)
 conn = get_conn()
 df_urun = pd.read_sql("SELECT id, ad FROM urun ORDER BY ad", conn)
 df_kalibre = pd.read_sql("SELECT u.ad as u_ad, k.kalibre, k.glaze, k.satis_fiyati, k.id as k_id FROM kalibre k JOIN urun u ON u.id=k.urun_id ORDER BY u.ad", conn)
@@ -93,10 +90,7 @@ with tab_stok:
         if not secili_kalibre or (kg <= 0 and palet <= 0): return
         
         k_id = kalibre_dict[secili_kalibre]
-        
-        # --- TÜRKİYE SAATİ (GMT+3) DÜZELTMESİ ---
-        simdi = datetime.now(tr_tz)
-        tarih, saat = simdi.strftime("%d-%m-%Y"), simdi.strftime("%H:%M:%S")
+        tarih, saat = datetime.now().strftime("%d-%m-%Y"), datetime.now().strftime("%H:%M:%S")
         
         c = get_conn(); cursor = c.cursor()
         if tip == "Giriş":
@@ -126,7 +120,7 @@ with tab_stok:
 
     st.divider()
     
-    # STOK TABLOSU
+    # STOK TABLOSU (Treeview Karşılığı)
     st.subheader("GÜNCEL STOK DURUMU")
     display_data = []
     t_kg, t_palet, t_val = 0, 0, 0
@@ -136,8 +130,7 @@ with tab_stok:
         t_kg += kg; t_palet += palet; t_val += val
         display_data.append([r['ad'], r['kalibre'], f"%{r['glaze']}", f"{kg:,.0f}".replace(",", "."), int(palet), format_tl(fiyat), format_tl(val)])
     
-    # Mobil uyumlu dataframe
-    st.dataframe(pd.DataFrame(display_data, columns=["ÜRÜN ADI", "KALİBRE", "GLAZE", "STOK (KG)", "PALET", "BİRİM FİYAT", "TOPLAM DEĞER"]), use_container_width=True, hide_index=True)
+    st.dataframe(pd.DataFrame(display_data, columns=["ÜRÜN ADI", "KALİBRE", "GLAZE", "STOK (KG)", "PALET", "BİRİM FİYAT", "TOPLAM DEĞER"]), use_container_width=True)
 
 
 # ==========================================
@@ -208,18 +201,19 @@ with tab_yonetim:
 with tab_rapor:
     st.subheader("📄 EKSTRELER")
     
-    # CSV Rapor
+    # CSV Rapor (Birebir Aynı)
     output = io.StringIO()
     writer = csv.writer(output, delimiter=";")
     writer.writerow(["ÜRÜN ADI", "KALİBRE", "GLAZE", "STOK (KG)", "PALET", "TOPLAM DEĞER"])
-    for row in display_data: 
+    for row in display_data: # display_data tab_stok içinde hesaplandı
         writer.writerow([row[0], row[1], row[2], row[3], row[4], row[6]])
     writer.writerow([])
     writer.writerow(["TOPLAM", "", "", f"{t_kg:,.0f}".replace(",", "."), int(t_palet), format_tl(t_val)])
     
-    st.download_button("📊 EKSTRE (CSV) İNDİR", data=output.getvalue().encode('utf-8-sig'), file_name=f"Depo_Ekstre_{datetime.now(tr_tz).strftime('%Y%m%d_%H%M')}.csv")
+    st.download_button("📊 EKSTRE (CSV) İNDİR", data=output.getvalue().encode('utf-8-sig'), file_name=f"Depo_Ekstre_{datetime.now().strftime('%Y%m%d_%H%M')}.csv")
     
     st.write("")
+    # Ekran Rapor (Courier New fontlu Text widget karşılığı)
     if st.button("📄 EKSTRE (EKRAN) GÖSTER"):
         rapor_metni = f"{'ÜRÜN ADI':<20} | {'KALİBRE':<10} | {'GLAZE':<6} | {'STOK (KG)':>12} | {'PALET':>6} | {'TOPLAM DEĞER':>18}\n"
         rapor_metni += "-"*105 + "\n"
@@ -247,12 +241,11 @@ with tab_gecmis:
                           FROM stok_hareket h JOIN kalibre k ON k.id=h.kalibre_id JOIN urun u ON u.id=k.urun_id ORDER BY h.id DESC""", c)
     c.close()
     
+    # DataFrame'i % işareti ve virgül ile formatlama (Görsel için)
     h_df_disp = h_df.copy()
     h_df_disp["GLAZE"] = h_df_disp["GLAZE"].map(lambda x: f"%{x}")
     h_df_disp["STOK (KG)"] = h_df_disp["STOK (KG)"].map(lambda x: f"{x:,.0f}".replace(",", "."))
-    
-    # Mobil uyumlu hareket geçmişi tablosu
-    st.dataframe(h_df_disp, use_container_width=True, hide_index=True)
+    st.dataframe(h_df_disp, use_container_width=True)
     
     st.divider()
     st.subheader("İşlem Geri Al (Undo)")
@@ -294,7 +287,7 @@ with tab_yedek:
             c.close()
             
             j_data = json.dumps(yedek_verisi, ensure_ascii=False, indent=4, default=str)
-            dosya_adi = f"Fildisi_Grup_Yedek_{datetime.now(tr_tz).strftime('%Y%m%d_%H%M')}.json"
+            dosya_adi = f"Fildisi_Grup_Yedek_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
             st.download_button("Dosyayı İndir", data=j_data, file_name=dosya_adi, mime="application/json")
 
     with c2:
@@ -307,9 +300,11 @@ with tab_yedek:
                     yedek = json.load(yuklenen_dosya)
                     c = get_conn(); cur = c.cursor()
                     
+                    # Tabloları temizle
                     for tablo in ["stok_hareket", "lot", "kalibre", "urun"]:
                         cur.execute(f"TRUNCATE TABLE {tablo} RESTART IDENTITY CASCADE")
                     
+                    # Verileri ekle
                     for r in yedek.get("urun", []):
                         cur.execute("INSERT INTO urun (id, ad) VALUES (%s, %s)", (r['id'], r['ad']))
                         
@@ -328,5 +323,3 @@ with tab_yedek:
                     c.commit(); c.close(); st.success("Veriler başarıyla geri yüklendi!"); st.rerun()
                 except Exception as e:
                     st.error(f"Geri Yükleme Hatası: {e}")
-
-st.caption(f"Copyright © 2026 - Kutay Fildişi - Sistem Saati: {datetime.now(tr_tz).strftime('%H:%M:%S')}")
