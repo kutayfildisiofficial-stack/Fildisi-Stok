@@ -52,7 +52,7 @@ def get_data():
         return None, str(e)
 
 # --- ANA UYGULAMA AKIŞI ---
-st.title("🐘 FİLDİŞİ GRUP - ANLIK STOK")
+st.title("📝 ANLIK STOK VERİLERİ")
 
 # Verileri çek
 df_stok, df_hareket_veya_hata = get_data()
@@ -74,7 +74,6 @@ else:
     m3.metric("Toplam Değer", f"₺{t_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
     # Görselleştirme Tablosu
-    st.subheader("📊 Güncel Stok Durumu")
     df_display = df_stok.copy()
     df_display["GLAZE"] = df_display["GLAZE"].apply(lambda x: f"%{x}")
     df_display["STOK (KG)"] = df_display["STOK (KG)"].apply(lambda x: f"{x:,.0f}".replace(",", "."))
@@ -101,7 +100,7 @@ else:
     st.divider()
 
     # Son Hareketler
-    st.subheader("📜 Son 10 Stok Hareketi")
+    st.subheader("📜 SON STOK HAREKETLERİ")
     st.dataframe(df_hareket_veya_hata, use_container_width=True, hide_index=True)
 
 # Manuel Yenileme Butonu
