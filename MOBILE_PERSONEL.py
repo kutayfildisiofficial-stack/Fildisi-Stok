@@ -126,22 +126,7 @@ with tab_stok:
     st.divider()
     
     # STOK TABLOSU
-    st.subheader("GÜNCEL STOK DURUMU")
-    urun_detay = f"{r['ad']} - {r['kalibre']} (%{r['glaze']})"
-
-display_data.append([
-    urun_detay,
-    f"{kg:,.0f}".replace(",", "."),
-    int(palet),
-    format_tl(fiyat),
-    format_tl(val)
-])
-
-st.dataframe(pd.DataFrame(
-    display_data,
-    columns=["ÜRÜN DETAY", "STOK (KG)", "PALET", "BİRİM FİYAT", "TOPLAM DEĞER"]
-), use_container_width=True)
-
+    
 # ==========================================
 # TAB 2: ÜRÜN & KALİBRE YÖNETİMİ
 # ==========================================
@@ -160,7 +145,38 @@ with tab_yonetim:
         
         sil_urun = st.selectbox("Ürün Seç:", urun_listesi)
         if st.button("❌ Seçili Ürünü Sil"):
-            if sil_urun:
+     st.subheader("GÜNCEL STOK DURUMU")
+
+display_data = []
+t_kg, t_palet, t_val = 0, 0, 0
+
+for _, r in df_stok.iterrows():
+    kg = r['kg'] or 0
+    palet = r['palet'] or 0
+    fiyat = r['satis_fiyati'] or 0
+    val = kg * fiyat
+
+    t_kg += kg
+    t_palet += palet
+    t_val += val
+
+    urun_detay = f"{r['ad']} - {r['kalibre']} (%{r['glaze']})"
+
+    display_data.append([
+        urun_detay,
+        f"{kg:,.0f}".replace(",", "."),
+        int(palet),
+        format_tl(fiyat),
+        format_tl(val)
+    ])
+
+st.dataframe(
+    pd.DataFrame(
+        display_data,
+        columns=["ÜRÜN DETAY", "STOK (KG)", "PALET", "BİRİM FİYAT", "TOPLAM DEĞER"]
+    ),
+    use_container_width=True
+)       if sil_urun:
                 c = get_conn(); cur = c.cursor()
                 cur.execute("DELETE FROM urun WHERE ad=%s", (sil_urun,))
                 c.commit(); c.close(); st.warning("Silindi!"); st.rerun()
@@ -330,6 +346,7 @@ with tab_yedek:
                     c.commit(); c.close(); st.success("Veriler başarıyla geri yüklendi!"); st.rerun()
                 except Exception as e:
                     st.error(f"Geri Yükleme Hatası: {e}")
+
 
 
 
