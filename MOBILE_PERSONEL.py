@@ -112,7 +112,7 @@ with tab_stok:
     if col_c.button("📤 ÇIKIŞ", use_container_width=True): hareket("Çıkış")
 
     st.divider()
-    st.subheader("GÜNCEL STOK DURUMU (KDV Hariçtir)")
+    st.subheader("GÜNCEL STOK DURUMU")
     display_data = []
     t_kg, t_palet, t_val = 0, 0, 0
     for _, r in df_stok.iterrows():
@@ -122,7 +122,7 @@ with tab_stok:
         detay = f"{r['ad']} {r['kalibre']} (%{r['glaze']})"
         display_data.append([detay, int(kg), int(palet), format_tl(fiyat), format_tl(val)])
     
-    st.dataframe(pd.DataFrame(display_data, columns=["ÜRÜN DETAYI", "STOK (KG)", "PALET", "BİRİM FİYAT", "TOPLAM DEĞER"]), use_container_width=True, hide_index=True)
+    st.dataframe(pd.DataFrame(display_data, columns=["ÜRÜN DETAYI", "MİKTAR (KG)", "PALET", "BİRİM FİYAT", "TOPLAM DEĞER(KDV HARİÇTİR)"]), use_container_width=True, hide_index=True)
 
 # ==========================================
 # TAB 2: ÜRÜN & KALİBRE YÖNETİMİ
@@ -130,7 +130,6 @@ with tab_stok:
 with tab_yonetim:
     c1, c2 = st.columns(2)
     with c1:
-        st.subheader("ÜRÜN YÖNETİMİ")
         yeni_urun = st.text_input("Yeni Ürün Ekle:")
         if st.button("➕ Ürün Ekle"):
             if yeni_urun.strip():
@@ -145,7 +144,7 @@ with tab_yonetim:
         st.write("📝 **Ürün İsmi Düzenle**")
         duzenle_sec = st.selectbox("Düzenlenecek Ürün:", df_urun['ad'].tolist() if not df_urun.empty else [], key="edit_urun_sec")
         yeni_isim = st.text_input("Yeni İsim:", key="edit_urun_name")
-        if st.button("💾 İsmi Güncelle"):
+        if st.button("💾 Güncelle"):
             if duzenle_sec and yeni_isim.strip():
                 c = get_conn(); cur = c.cursor()
                 cur.execute("UPDATE urun SET ad=%s WHERE ad=%s", (yeni_isim.strip(), duzenle_sec))
@@ -174,7 +173,7 @@ with tab_yonetim:
                 c.commit(); c.close(); st.success("Tanımlandı!"); st.rerun()
 
     st.divider()
-    st.subheader("TANIM YÖNETİMİ (SİL / FİYAT GÜNCELLE)")
+    st.subheader("TANIM SİL/FİYAT GÜNCELLE")
     yonet_kalibre = st.selectbox("Tanım Seç:", kalibre_listesi, key="y_k_sec")
     col_sil, col_fiyat, col_btn = st.columns([2, 2, 2])
     if col_sil.button("❌ Seçili Tanımı Sil", use_container_width=True):
@@ -205,17 +204,17 @@ with tab_rapor:
     writer.writerow([])
     writer.writerow(["TOPLAM", int(t_kg), int(t_palet), format_tl(t_val)])
     
-    st.download_button("📊 EKSTRE (CSV) İNDİR", data=output.getvalue().encode('utf-8-sig'), file_name=f"Fildisi_Stok_Rapor_{get_tr_now().strftime('%d_%m_%Y')}.csv", mime="text/csv")
+    st.download_button("📊 EKSTRE (CSV)", data=output.getvalue().encode('utf-8-sig'), file_name=f"Fildisi_Stok_Rapor_{get_tr_now().strftime('%d_%m_%Y')}.csv", mime="text/csv")
     
-    if st.button("📄 EKSTRE (EKRAN) GÖRÜNTÜLE"):
-        rapor_metni = f"{'ÜRÜN DETAYI':<40} | {'STOK (KG)':>12} | {'PALET':>6} | {'TOPLAM DEĞER':>18}\n"
+    if st.button("📄 EKSTRE (EKRAN)"):
+        rapor_metni = f"{'ÜRÜN DETAYI':<40} | {'MİKTAR (KG)':>12} | {'PALET':>6} | {'TOPLAM DEĞER(KDV HARİÇTİR)':>18}\n"
         rapor_metni += "-"*85 + "\n"
         for row in display_data:
             # Ekranda binlik ayırıcı için nokta formatı
             kg_formatli = f"{row[1]:,.0f}".replace(",", ".")
             rapor_metni += f"{row[0][:40]:<40} | {kg_formatli:>12} | {row[2]:>6} | {row[4]:>18}\n"
         rapor_metni += "-"*85 + "\n"
-        rapor_metni += f"{'TOPLAM (KDV HARİÇTİR)':<40} | {f'{t_kg:,.0f}'.replace(',', '.'):>12} | {int(t_palet):>6} | {format_tl(t_val):>18}"
+        rapor_metni += f"{'TOPLAM':<40} | {f'{t_kg:,.0f}'.replace(',', '.'):>12} | {int(t_palet):>6} | {format_tl(t_val):>18}"
         st.code(rapor_metni, language="text")
 
 # ==========================================
@@ -286,3 +285,4 @@ with tab_yedek:
             except Exception as e: st.error(f"Hata: {e}")
 
 st.caption("Copyright © 2026 - Kutay Fildişi - Tüm hakları saklıdır.")
+
