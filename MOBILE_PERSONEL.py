@@ -204,8 +204,6 @@ with tab_yonetim:
 # TAB 3: RAPORLAR (EKSTRE EKRAN VE CSV)
 # ==========================================
 with tab_rapor:
-    st.subheader("📄 EKSTRELER")
-    
     # CSV Rapor
     output = io.StringIO()
     writer = csv.writer(output, delimiter=";")
@@ -329,6 +327,7 @@ with tab_yedek:
                     c.commit(); c.close(); st.success("Veriler başarıyla geri yüklendi!"); st.rerun()
                 except Exception as e:
                     st.error(f"Geri Yükleme Hatası: {e}")
+
 
 
 
