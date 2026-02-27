@@ -80,8 +80,8 @@ kalibre_dict = {f"{r['u_ad']} - {r['kalibre']} - %{r['glaze']}": r['k_id'] for _
 with tab_stok:
     st.subheader("GİRİŞ/ÇIKIŞ İŞLEMLERİ")
     c1, c2, c3, c4 = st.columns([3, 1, 1, 3])
-    secili_kalibre = c1.selectbox("Ürün-Kalibre-Glaze:", kalibre_listesi, key="islem_sec")
-    islem_kg = c2.text_input("KG:")
+    secili_kalibre = c1.selectbox("Ürün:", kalibre_listesi, key="islem_sec")
+    islem_kg = c2.text_input("Miktar(KG):")
     islem_palet = c3.text_input("Palet:")
     islem_aciklama = c4.text_input("Açıklama:")
 
@@ -330,6 +330,7 @@ with tab_yedek:
                     c.commit(); c.close(); st.success("Veriler başarıyla geri yüklendi!"); st.rerun()
                 except Exception as e:
                     st.error(f"Geri Yükleme Hatası: {e}")
+
 
 
 
