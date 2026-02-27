@@ -16,7 +16,7 @@ st.set_page_config(page_title="FİLDİŞİ GRUP - STOK", layout="wide")
 DB_URI = "postgresql://neondb_owner:npg_CuvX8ByQ5oFk@ep-cool-rain-abpiie2h-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require"
 
 # --- VERİ ÇEKME FONKSİYONU (Önbellekli) ---
-@st.cache_data(ttl=60) # Veriyi 60 saniye boyunca hafızada tutar, hızı artırır
+@st.cache_data(ttl=60)
 def get_data():
     try:
         conn = psycopg2.connect(DB_URI)
@@ -73,22 +73,46 @@ else:
     m2.metric("Toplam Palet", int(t_palet))
     m3.metric("Toplam Değer", f"₺{t_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
-    # Görselleştirme Tablosu
+    # Görselleştirme Tablosu Hazırlığı
     df_display = df_stok.copy()
-    df_display["GLAZE"] = df_display["GLAZE"].apply(lambda x: f"%{x}")
+    
+    # Ürün, Kalibre ve Glaze sütunlarını birleştirme
+    df_display["ÜRÜN BİLGİSİ"] = (
+        df_display["ÜRÜN ADI"] + " - " + 
+        df_display["KALİBRE"] + " (%" + 
+        df_display["GLAZE"].astype(str) + ")"
+    )
+    
+    # Sadece gerekli sütunları seçip sıralıyoruz
+    df_display = df_display[["ÜRÜN BİLGİSİ", "STOK (KG)", "PALET", "BİRİM FİYAT", "TOPLAM DEĞER"]]
+
+    # Formatlama işlemleri
     df_display["STOK (KG)"] = df_display["STOK (KG)"].apply(lambda x: f"{x:,.0f}".replace(",", "."))
     df_display["BİRİM FİYAT"] = df_display["BİRİM FİYAT"].apply(lambda x: f"₺{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
     df_display["TOPLAM DEĞER"] = df_display["TOPLAM DEĞER"].apply(lambda x: f"₺{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
     
+    # Ekrana Tabloyu Bas
     st.dataframe(df_display, use_container_width=True, hide_index=True)
 
-    # Excel (CSV) İndirme İşlemi
+    # Excel (CSV) İndirme İşlemi - Birleştirilmiş Formatla
     output = io.StringIO()
     writer = csv.writer(output, delimiter=";")
-    writer.writerow(["ÜRÜN ADI", "KALİBRE", "GLAZE", "STOK (KG)", "PALET", "TOPLAM DEĞER"])
+    
+    # CSV Başlıkları
+    writer.writerow(["ÜRÜN BİLGİSİ", "STOK (KG)", "PALET", "TOPLAM DEĞER"])
+    
     for _, row in df_stok.iterrows():
-        writer.writerow([row["ÜRÜN ADI"], row["KALİBRE"], f"%{row['GLAZE']}", int(row["STOK (KG)"]), int(row["PALET"]), f"{row['TOPLAM DEĞER']:.2f}"])
-    writer.writerow(["TOPLAM", "", "", int(t_kg), int(t_palet), f"{t_val:.2f}"])
+        # Satırda Ürün Detayını Oluştur
+        urun_detay = f"{row['ÜRÜN ADI']} - {row['KALİBRE']} (%{row['GLAZE']})"
+        writer.writerow([
+            urun_detay, 
+            int(row["STOK (KG)"]), 
+            int(row["PALET"]), 
+            f"{row['TOPLAM DEĞER']:.2f}".replace(".", ",")
+        ])
+    
+    # Toplam Satırı
+    writer.writerow(["TOPLAM", int(t_kg), int(t_palet), f"{t_val:.2f}".replace(".", ",")])
 
     st.download_button(
         label="📥 Excel'e Aktar (CSV)",
