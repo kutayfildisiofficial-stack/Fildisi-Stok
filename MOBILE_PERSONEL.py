@@ -216,13 +216,11 @@ with tab_rapor:
     writer.writerow([])
     writer.writerow(["TOPLAM", "", "", f"{t_kg:,.0f}".replace(",", "."), int(t_palet), format_tl(t_val)])
     
-    # --- MOBILE_PERSONEL.py içindeki ilgili satırı bul ve değiştir ---
-st.download_button(
-    "📊 EKSTRE (CSV) İNDİR", 
-    data=output.getvalue().encode('utf-8-sig'), 
-    file_name=f"Depo_Ekstre_{get_tr_now().strftime('%Y%m%d_%H%M')}.csv",
-    mime="application/octet-stream"  # 'text/csv' yerine bunu yazdık
-)
+    # Dosya ismine Türkiye saati eklendi
+    st.download_button("📊 EKSTRE (CSV) İNDİR", data=output.getvalue().encode('utf-8-sig'), file_name=f"Fildisi_Stok_Rapor_{get_tr_now().strftime('%d_%m_%Y')}.csv", # get_tr_now eklendi
+            mime="text/csv",
+                      )
+    
     st.write("")
     # Ekran Rapor
     if st.button("📄 EKSTRE (EKRAN) GÖSTER"):
@@ -332,4 +330,3 @@ with tab_yedek:
                     c.commit(); c.close(); st.success("Veriler başarıyla geri yüklendi!"); st.rerun()
                 except Exception as e:
                     st.error(f"Geri Yükleme Hatası: {e}")
-
