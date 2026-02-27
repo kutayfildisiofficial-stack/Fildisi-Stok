@@ -105,23 +105,22 @@ else:
         # Satırda Ürün Detayını Oluştur
         urun_detay = f"{row['ÜRÜN ADI']} - {row['KALİBRE']} (%{row['GLAZE']})"
         
-        # Sayısal Değerleri TR Formatına Çevirme
-        kg_str = f"{row['STOK (KG)']:,.0f}".replace(",", ".")
-        # TL Simgesi eklenmiş ve virgül/nokta düzenlenmiş değer
+        # --- DÜZELTME: KG değerini Excel bozmasın diye nokta/virgül olmadan ham sayı yazıyoruz ---
+        kg_degeri = int(row["STOK (KG)"])
+        
+        # Diğer değerler istediğin formatta kalıyor
         deger_str = f"₺{row['TOPLAM DEĞER']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         
         writer.writerow([
             urun_detay, 
-            kg_str, 
+            kg_degeri, 
             int(row["PALET"]), 
             deger_str
         ])
     
-    # Toplam Satırı
-    t_kg_str = f"{t_kg:,.0f}".replace(",", ".")
-    t_val_str = f"₺{t_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    
-    writer.writerow(["TOPLAM", t_kg_str, int(t_palet), t_val_str])
+    # Toplam Satırı (Burada da KG ham sayı olarak yazıldı)
+    t_val_str = f"₺{t_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+    writer.writerow(["TOPLAM", int(t_kg), int(t_palet), t_val_str])
 
     st.download_button(
         label="📥 Excel'e Aktar (CSV)",
@@ -134,7 +133,7 @@ else:
 
     # Son Hareketler
     st.subheader("📜 STOK HAREKETLERİ")
-    st.dataframe(df_hareket_veya_hata, use_container_width=True, hide_index=True)
+    st.dataframe(df_hareket_ve_hata if 'df_hareket_ve_hata' in locals() else df_hareket_veya_hata, use_container_width=True, hide_index=True)
 
 # Manuel Yenileme Butonu
 if st.sidebar.button("🔄 Verileri Şimdi Yenile"):
