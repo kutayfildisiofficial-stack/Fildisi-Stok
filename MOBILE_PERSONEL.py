@@ -112,7 +112,7 @@ with tab_stok:
     if col_c.button("📤 ÇIKIŞ", use_container_width=True): hareket("Çıkış")
 
     st.divider()
-    st.subheader("GÜNCEL STOK DURUMU")
+    st.subheader("GÜNCEL STOK DURUMU (KDV Hariçtir)")
     display_data = []
     t_kg, t_palet, t_val = 0, 0, 0
     for _, r in df_stok.iterrows():
@@ -120,7 +120,7 @@ with tab_stok:
         val = kg * fiyat
         t_kg += kg; t_palet += palet; t_val += val
         detay = f"{r['ad']} {r['kalibre']} (%{r['glaze']})"
-        display_data.append([detay, f"{kg:,.0f}".replace(",", "."), int(palet), format_tl(fiyat), format_tl(val)])
+        display_data.append([detay, int(kg), int(palet), format_tl(fiyat), format_tl(val)])
     
     st.dataframe(pd.DataFrame(display_data, columns=["ÜRÜN DETAYI", "STOK (KG)", "PALET", "BİRİM FİYAT", "TOPLAM DEĞER"]), use_container_width=True, hide_index=True)
 
@@ -130,8 +130,9 @@ with tab_stok:
 with tab_yonetim:
     c1, c2 = st.columns(2)
     with c1:
-        yeni_urun = st.text_input("Yeni Ürün Adı:")
-        if st.button("Ürün Ekle"):
+        st.subheader("ÜRÜN YÖNETİMİ")
+        yeni_urun = st.text_input("Yeni Ürün Ekle:")
+        if st.button("➕ Ürün Ekle"):
             if yeni_urun.strip():
                 try:
                     c = get_conn(); cur = c.cursor()
@@ -139,8 +140,20 @@ with tab_yonetim:
                     c.commit(); c.close(); st.success("Ürün eklendi!"); st.rerun()
                 except: st.error("Bu ürün zaten mevcut.")
         
-        sil_urun = st.selectbox("Silmek İçin Ürün Seç:", df_urun['ad'].tolist() if not df_urun.empty else [])
-        if st.button("❌ Seçili Ürünü Sil"):
+        st.divider()
+        # ÜRÜN İSMİ DÜZENLEME BÖLÜMÜ
+        st.write("📝 **Ürün İsmi Düzenle**")
+        duzenle_sec = st.selectbox("Düzenlenecek Ürün:", df_urun['ad'].tolist() if not df_urun.empty else [], key="edit_urun_sec")
+        yeni_isim = st.text_input("Yeni İsim:", key="edit_urun_name")
+        if st.button("💾 İsmi Güncelle"):
+            if duzenle_sec and yeni_isim.strip():
+                c = get_conn(); cur = c.cursor()
+                cur.execute("UPDATE urun SET ad=%s WHERE ad=%s", (yeni_isim.strip(), duzenle_sec))
+                c.commit(); c.close(); st.success("Ürün ismi güncellendi!"); st.rerun()
+
+        st.divider()
+        sil_urun = st.selectbox("❌ Silinecek Ürün:", df_urun['ad'].tolist() if not df_urun.empty else [])
+        if st.button("Seçili Ürünü Sil"):
             if sil_urun:
                 c = get_conn(); cur = c.cursor()
                 cur.execute("DELETE FROM urun WHERE ad=%s", (sil_urun,))
@@ -161,7 +174,8 @@ with tab_yonetim:
                 c.commit(); c.close(); st.success("Tanımlandı!"); st.rerun()
 
     st.divider()
-    yonet_kalibre = st.selectbox("Tanım Yönet (Sil/Fiyat):", kalibre_listesi, key="y_k_sec")
+    st.subheader("TANIM YÖNETİMİ (SİL / FİYAT GÜNCELLE)")
+    yonet_kalibre = st.selectbox("Tanım Seç:", kalibre_listesi, key="y_k_sec")
     col_sil, col_fiyat, col_btn = st.columns([2, 2, 2])
     if col_sil.button("❌ Seçili Tanımı Sil", use_container_width=True):
         if yonet_kalibre:
@@ -184,11 +198,12 @@ with tab_rapor:
     # CSV Rapor
     output = io.StringIO()
     writer = csv.writer(output, delimiter=";")
-    writer.writerow(["ÜRÜN DETAYI", "STOK (KG)", "PALET", "TOPLAM DEĞER"])
+    writer.writerow(["ÜRÜN DETAYI", "STOK (KG)", "PALET", "TOPLAM DEĞER (KDV HARİÇTİR)"])
     for row in display_data:
+        # Excel'in KG'yi 1.000 -> 1 yapmaması için doğrudan sayı yazıyoruz
         writer.writerow([row[0], row[1], row[2], row[4]])
     writer.writerow([])
-    writer.writerow(["TOPLAM", f"{t_kg:,.0f}".replace(",", "."), int(t_palet), format_tl(t_val)])
+    writer.writerow(["TOPLAM", int(t_kg), int(t_palet), format_tl(t_val)])
     
     st.download_button("📊 EKSTRE (CSV) İNDİR", data=output.getvalue().encode('utf-8-sig'), file_name=f"Fildisi_Stok_Rapor_{get_tr_now().strftime('%d_%m_%Y')}.csv", mime="text/csv")
     
@@ -196,9 +211,11 @@ with tab_rapor:
         rapor_metni = f"{'ÜRÜN DETAYI':<40} | {'STOK (KG)':>12} | {'PALET':>6} | {'TOPLAM DEĞER':>18}\n"
         rapor_metni += "-"*85 + "\n"
         for row in display_data:
-            rapor_metni += f"{row[0][:40]:<40} | {row[1]:>12} | {row[2]:>6} | {row[4]:>18}\n"
+            # Ekranda binlik ayırıcı için nokta formatı
+            kg_formatli = f"{row[1]:,.0f}".replace(",", ".")
+            rapor_metni += f"{row[0][:40]:<40} | {kg_formatli:>12} | {row[2]:>6} | {row[4]:>18}\n"
         rapor_metni += "-"*85 + "\n"
-        rapor_metni += f"{'TOPLAM':<40} | {f'{t_kg:,.0f}'.replace(',', '.'):>12} | {int(t_palet):>6} | {format_tl(t_val):>18}"
+        rapor_metni += f"{'TOPLAM (KDV HARİÇTİR)':<40} | {f'{t_kg:,.0f}'.replace(',', '.'):>12} | {int(t_palet):>6} | {format_tl(t_val):>18}"
         st.code(rapor_metni, language="text")
 
 # ==========================================
@@ -268,4 +285,4 @@ with tab_yedek:
                 c.commit(); c.close(); st.success("Geri yüklendi!"); st.rerun()
             except Exception as e: st.error(f"Hata: {e}")
 
-
+st.caption("Copyright © 2026 - Kutay Fildişi - Tüm hakları saklıdır.")
