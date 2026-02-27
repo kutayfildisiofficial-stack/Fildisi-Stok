@@ -221,7 +221,7 @@ with tab_gecmis:
         h_df_disp["SAAT"] = h_df["saat"]
         h_df_disp["AÇIKLAMA"] = h_df["aciklama"]
         
-        st.dataframe(h_df_disp, use_container_width=True)
+        st.dataframe(h_df_disp, use_container_width=True, hide_index=True)
         
         st.divider()
         st.subheader("↩️ İşlem Geri Al")
@@ -267,3 +267,4 @@ with tab_yedek:
                 for r in data.get("stok_hareket", []): cur.execute("INSERT INTO stok_hareket (id, kalibre_id, tip, kg, palet, tarih, saat, aciklama) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (r['id'], r['kalibre_id'], r['tip'], r['kg'], r['palet'], r['tarih'], r['saat'], r['aciklama']))
                 c.commit(); c.close(); st.success("Geri yüklendi!"); st.rerun()
             except Exception as e: st.error(f"Hata: {e}")
+
