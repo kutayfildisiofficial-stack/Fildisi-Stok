@@ -47,12 +47,12 @@ if not st.session_state.logged_in:
     st.stop()
 
 # --- ANA UYGULAMA (GİRİŞ BAŞARILI) ---
-st.title("🐘 FİLDİŞİ GRUP - PERSONEL STOK TAKİP")
+st.subheader("STOK YÖNETİM PANELİ")
 
 # Tüm Sekmeler
 tab_stok, tab_yonetim, tab_rapor, tab_gecmis, tab_yedek = st.tabs([
     "📦 Stok & Giriş/Çıkış", 
-    "⚙️ Yönetim (Ürün/Kalibre)", 
+    "⚙️ Ürün/Kalibre Tanımları", 
     "📊 Ekstreler", 
     "📜 Hareket Geçmişi", 
     "💾 Yedekleme"
@@ -217,13 +217,13 @@ with tab_rapor:
     writer.writerow(["TOPLAM", "", "", f"{t_kg:,.0f}".replace(",", "."), int(t_palet), format_tl(t_val)])
     
     # Dosya ismine Türkiye saati eklendi
-    st.download_button("📊 EKSTRE (CSV) İNDİR", data=output.getvalue().encode('utf-8-sig'), file_name=f"Fildisi_Stok_Rapor_{get_tr_now().strftime('%d_%m_%Y')}.csv", # get_tr_now eklendi
+    st.download_button("📊 EKSTRE (CSV)", data=output.getvalue().encode('utf-8-sig'), file_name=f"Fildisi_Stok_Rapor_{get_tr_now().strftime('%d_%m_%Y')}.csv", # get_tr_now eklendi
             mime="text/csv",
                       )
     
     st.write("")
     # Ekran Rapor
-    if st.button("📄 EKSTRE (EKRAN) GÖSTER"):
+    if st.button("📄 EKSTRE (EKRAN)"):
         rapor_metni = f"{'ÜRÜN ADI':<20} | {'KALİBRE':<10} | {'GLAZE':<6} | {'STOK (KG)':>12} | {'PALET':>6} | {'TOPLAM DEĞER':>18}\n"
         rapor_metni += "-"*105 + "\n"
         
@@ -330,3 +330,4 @@ with tab_yedek:
                     c.commit(); c.close(); st.success("Veriler başarıyla geri yüklendi!"); st.rerun()
                 except Exception as e:
                     st.error(f"Geri Yükleme Hatası: {e}")
+
