@@ -27,13 +27,10 @@ def get_data():
         """
         df_stok = pd.read_sql(query_stok, conn)
         
-        # SAAT DÜZELTME: UTC'den Europe/Istanbul'a çevrim ve HH:MI formatı
         query_harket = """
-            SELECT 
-                TO_CHAR(h.tarih, 'DD.MM.YYYY') as "TARİH", 
-                TO_CHAR(h.saat AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul', 'HH24:MI') as "SAAT", 
-                u.ad || ' - ' || k.kalibre || ' (%' || k.glaze || ')' as "ÜRÜN DETAY", 
-                h.tip as "İŞLEM", h.kg as "KG", h.palet as "PALET", h.aciklama as "AÇIKLAMA"
+            SELECT h.tarih as "TARİH", h.saat as "SAAT", 
+                   u.ad || ' - ' || k.kalibre || ' (%' || k.glaze || ')' as "ÜRÜN DETAY", 
+                   h.tip as "İŞLEM", h.kg as "KG", h.palet as "PALET", h.aciklama as "AÇIKLAMA"
             FROM stok_hareket h 
             JOIN kalibre k ON k.id = h.kalibre_id 
             JOIN urun u ON u.id = k.urun_id 
@@ -77,9 +74,9 @@ else:
         col2.metric("Toplam Palet", int(t_palet))
         col3.metric("Toplam Değer", f"₺{t_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
-        # --- EKRAN İÇİN GÖRSEL TABLO ---
+        # --- EKRAN İÇİN GÖRSEL TABLO (GLAZE %50 YAPILDI) ---
         df_display = df_stok.copy()
-        df_display["GLAZE"] = df_display["GLAZE"].map(lambda x: f"%{x}")
+        df_display["GLAZE"] = df_display["GLAZE"].map(lambda x: f"%{x}") # İSTEK: %50 formatı
         df_display["STOK (KG)"] = df_display["STOK (KG)"].map(lambda x: f"{x:,.0f}".replace(",", "."))
         df_display["PALET"] = df_display["PALET"].map(lambda x: f"{int(x)}")
         df_display["BİRİM FİYAT"] = df_display["BİRİM FİYAT"].map(lambda x: f"₺{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
@@ -88,23 +85,33 @@ else:
         st.subheader("📊 Güncel Stok Durumu")
         st.dataframe(df_display, use_container_width=True)
 
-        # --- CSV HAZIRLAMA ---
+        # --- CSV HAZIRLAMA (GÖRSEL image_5fbbdc.png UYUMLU) ---
         output = io.StringIO()
         writer = csv.writer(output, delimiter=";")
+        
+        # Başlıklar (Görseldeki gibi Birim Fiyat yok)
         writer.writerow(["ÜRÜN ADI", "KALİBRE", "GLAZE", "STOK (KG)", "PALET", "TOPLAM DEĞER"])
         
         for _, row in df_stok.iterrows():
             writer.writerow([
                 row["ÜRÜN ADI"], 
                 row["KALİBRE"], 
-                f"%{row['GLAZE']}", 
-                f"{row['STOK (KG)']:,.0f}".replace(",", ""), 
+                f"%{row['GLAZE']}", # Excel'de %50 görünümü
+                f"{row['STOK (KG)']:,.0f}".replace(",", ""), # Excel sayı olarak tanısın
                 int(row["PALET"]), 
                 f"₺{row['TOPLAM DEĞER']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             ])
             
+        # Görseldeki gibi bir boşluk satırı ve TOPLAM satırı
         writer.writerow([])
-        writer.writerow(["TOPLAM", "", "", f"{t_kg:,.0f}".replace(",", ""), int(t_palet), f"₺{t_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")])
+        writer.writerow([
+            "TOPLAM", 
+            "", 
+            "", 
+            f"{t_kg:,.0f}".replace(",", ""), 
+            int(t_palet), 
+            f"₺{t_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        ])
         
         st.download_button(
             label="📥 Excel'e Aktar (CSV)",
@@ -115,7 +122,7 @@ else:
 
         st.divider()
 
-        # --- HAREKET GEÇMİŞİ (GMT+3 UYUMLU) ---
+        # --- HAREKET GEÇMİŞİ ---
         df_h_disp = df_hareket.copy()
         df_h_disp["KG"] = df_h_disp["KG"].map(lambda x: f"{x:,.0f}".replace(",", "."))
         df_h_disp["PALET"] = df_h_disp["PALET"].map(lambda x: f"{int(x)}")
