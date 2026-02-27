@@ -145,7 +145,6 @@ with tab_yonetim:
     c1, c2 = st.columns(2)
     
     with c1:
-        st.subheader("ÜRÜN YÖNETİMİ")
         yeni_urun = st.text_input("Yeni Ürün Adı:")
         if st.button("Ürün Ekle"):
             if yeni_urun.strip():
@@ -327,6 +326,7 @@ with tab_yedek:
                     c.commit(); c.close(); st.success("Veriler başarıyla geri yüklendi!"); st.rerun()
                 except Exception as e:
                     st.error(f"Geri Yükleme Hatası: {e}")
+
 
 
 
