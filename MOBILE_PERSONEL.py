@@ -34,7 +34,7 @@ if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
-    st.title("🔐 FİLDİŞİ GRUP - GİRİŞ")
+    st.title("🔐 GİRİŞ")
     user_entry = st.text_input("Kullanıcı Adı:", value="FLD2026")
     pass_entry = st.text_input("Şifre:", type="password")
     if st.button("Giriş Yap"):
@@ -330,4 +330,5 @@ with tab_yedek:
                     c.commit(); c.close(); st.success("Veriler başarıyla geri yüklendi!"); st.rerun()
                 except Exception as e:
                     st.error(f"Geri Yükleme Hatası: {e}")
+
 
