@@ -160,7 +160,7 @@ df_final = pd.DataFrame(
     columns=["ÜRÜN DETAY", "STOK (KG)", "PALET", "BİRİM FİYAT", "TOPLAM DEĞER"]
 )
 
-st.dataframe(df_final, use_container_width=True, hide_index=True)"
+st.dataframe(df_final, use_container_width=True, hide_index=True)
 
 
 # ==========================================
@@ -354,6 +354,7 @@ with tab_yedek:
                     c.commit(); c.close(); st.success("Veriler başarıyla geri yüklendi!"); st.rerun()
                 except Exception as e:
                     st.error(f"Geri Yükleme Hatası: {e}")
+
 
 
 
