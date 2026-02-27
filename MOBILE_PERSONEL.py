@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import psycopg2
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
 import csv
 import json
@@ -12,7 +12,7 @@ DB_URI = "postgresql://neondb_owner:npg_CuvX8ByQ5oFk@ep-cool-rain-abpiie2h-poole
 def get_conn():
     return psycopg2.connect(DB_URI)
 
-# --- Format Fonksiyonları (Birebir Aynı) ---
+# --- Format Fonksiyonları ---
 def safe_float(val):
     try: return float(str(val).replace(",", "."))
     except: return 0.0
@@ -41,10 +41,9 @@ if not st.session_state.logged_in:
     st.caption("Copyright © 2026 - Kutay Fildişi - Tüm hakları saklıdır.")
     st.stop()
 
-# --- ANA UYGULAMA (GİRİŞ BAŞARILI) ---
+# --- ANA UYGULAMA ---
 st.title("🐘 FİLDİŞİ GRUP - PERSONEL STOK TAKİP")
 
-# Tüm Sekmeler (Tkinter Frame'lerine Karşılık)
 tab_stok, tab_yonetim, tab_rapor, tab_gecmis, tab_yedek = st.tabs([
     "📦 Stok & Giriş/Çıkış", 
     "⚙️ Yönetim (Ürün/Kalibre)", 
@@ -53,7 +52,7 @@ tab_stok, tab_yonetim, tab_rapor, tab_gecmis, tab_yedek = st.tabs([
     "💾 Yedekleme"
 ])
 
-# Veri Çekme İşlemleri (load_data ve load_stok)
+# Veri Çekme
 conn = get_conn()
 df_urun = pd.read_sql("SELECT id, ad FROM urun ORDER BY ad", conn)
 df_kalibre = pd.read_sql("SELECT u.ad as u_ad, k.kalibre, k.glaze, k.satis_fiyati, k.id as k_id FROM kalibre k JOIN urun u ON u.id=k.urun_id ORDER BY u.ad", conn)
@@ -63,14 +62,12 @@ df_stok = pd.read_sql("""SELECT u.ad, k.kalibre, k.glaze, SUM(l.kalan_kg) as kg,
                          HAVING SUM(l.kalan_kg) > 0 OR SUM(l.kalan_palet) > 0 ORDER BY u.ad DESC""", conn)
 conn.close()
 
-# Ortak Liste Formatları
 urun_listesi = df_urun['ad'].tolist() if not df_urun.empty else []
 kalibre_listesi = [f"{r['u_ad']} - {r['kalibre']} - %{r['glaze']}" for _, r in df_kalibre.iterrows()]
 kalibre_dict = {f"{r['u_ad']} - {r['kalibre']} - %{r['glaze']}": r['k_id'] for _, r in df_kalibre.iterrows()}
 
-
 # ==========================================
-# TAB 1: STOK GİRİŞ / ÇIKIŞ İŞLEMLERİ & TABLO
+# TAB 1: STOK GİRİŞ / ÇIKIŞ (GMT+3 DÜZENLENDİ)
 # ==========================================
 with tab_stok:
     st.subheader("STOK GİRİŞ / ÇIKIŞ İŞLEMLERİ")
@@ -82,7 +79,6 @@ with tab_stok:
 
     col_g, col_c = st.columns(2)
     
-    # HAREKET FONKSİYONU
     def hareket(tip):
         kg = safe_float(islem_kg)
         palet = safe_float(islem_palet)
@@ -90,7 +86,11 @@ with tab_stok:
         if not secili_kalibre or (kg <= 0 and palet <= 0): return
         
         k_id = kalibre_dict[secili_kalibre]
-        tarih, saat = datetime.now().strftime("%d-%m-%Y"), datetime.now().strftime("%H:%M:%S")
+        
+        # GMT+3 AYARI: Türkiye saati hesaplama
+        tr_time = datetime.utcnow() + timedelta(hours=3)
+        tarih = tr_time.strftime("%d-%m-%Y")
+        saat = tr_time.strftime("%H:%M:%S")
         
         c = get_conn(); cursor = c.cursor()
         if tip == "Giriş":
@@ -119,8 +119,6 @@ with tab_stok:
     if col_c.button("📤 Stok Çıkış", use_container_width=True): hareket("Çıkış")
 
     st.divider()
-    
-    # STOK TABLOSU (Treeview Karşılığı)
     st.subheader("GÜNCEL STOK DURUMU")
     display_data = []
     t_kg, t_palet, t_val = 0, 0, 0
@@ -132,13 +130,11 @@ with tab_stok:
     
     st.dataframe(pd.DataFrame(display_data, columns=["ÜRÜN ADI", "KALİBRE", "GLAZE", "STOK (KG)", "PALET", "BİRİM FİYAT", "TOPLAM DEĞER"]), use_container_width=True)
 
-
 # ==========================================
 # TAB 2: ÜRÜN & KALİBRE YÖNETİMİ
 # ==========================================
 with tab_yonetim:
     c1, c2 = st.columns(2)
-    
     with c1:
         st.subheader("ÜRÜN YÖNETİMİ")
         yeni_urun = st.text_input("Yeni Ürün Adı:")
@@ -194,54 +190,47 @@ with tab_yonetim:
             cur.execute("UPDATE kalibre SET satis_fiyati=%s WHERE id=%s", (yeni_f, k_id))
             c.commit(); c.close(); st.success("Fiyat Güncellendi!"); st.rerun()
 
-
 # ==========================================
-# TAB 3: RAPORLAR (EKSTRE EKRAN VE CSV)
+# TAB 3: RAPORLAR
 # ==========================================
 with tab_rapor:
     st.subheader("📄 EKSTRELER")
-    
-    # CSV Rapor (Birebir Aynı)
     output = io.StringIO()
     writer = csv.writer(output, delimiter=";")
     writer.writerow(["ÜRÜN ADI", "KALİBRE", "GLAZE", "STOK (KG)", "PALET", "TOPLAM DEĞER"])
-    for row in display_data: # display_data tab_stok içinde hesaplandı
+    for row in display_data:
         writer.writerow([row[0], row[1], row[2], row[3], row[4], row[6]])
     writer.writerow([])
     writer.writerow(["TOPLAM", "", "", f"{t_kg:,.0f}".replace(",", "."), int(t_palet), format_tl(t_val)])
     
     st.download_button("📊 EKSTRE (CSV) İNDİR", data=output.getvalue().encode('utf-8-sig'), file_name=f"Depo_Ekstre_{datetime.now().strftime('%Y%m%d_%H%M')}.csv")
     
-    st.write("")
-    # Ekran Rapor (Courier New fontlu Text widget karşılığı)
     if st.button("📄 EKSTRE (EKRAN) GÖSTER"):
         rapor_metni = f"{'ÜRÜN ADI':<20} | {'KALİBRE':<10} | {'GLAZE':<6} | {'STOK (KG)':>12} | {'PALET':>6} | {'TOPLAM DEĞER':>18}\n"
         rapor_metni += "-"*105 + "\n"
-        
         for _, r in df_stok.iterrows():
             kg, palet, fiy = r['kg'] or 0, r['palet'] or 0, r['satis_fiyati'] or 0
             val = kg * fiy
             satir = f"{r['ad'][:20]:<20} | {r['kalibre']:<10} | %{r['glaze']:<5} | {kg:>12,.0f} | {int(palet):>6} | {format_tl(val):>18}\n".replace(",", ".")
             rapor_metni += satir
-            
         rapor_metni += "-"*105 + "\n"
         rapor_metni += f"{'TOPLAM':<41} | {t_kg:>12,.0f} | {int(t_palet):>6} | {format_tl(t_val):>18}".replace(",", ".")
-        
         st.code(rapor_metni, language="text")
 
-
 # ==========================================
-# TAB 4: STOK HAREKET GEÇMİŞİ & GERİ AL
+# TAB 4: HAREKET GEÇMİŞİ (GMT+3 DÜZENLENDİ)
 # ==========================================
 with tab_gecmis:
     st.subheader("STOK HAREKET GEÇMİŞİ")
     c = get_conn()
+    # SQL SEVİYESİNDE GMT+3 DÜZENLEMESİ:
     h_df = pd.read_sql("""SELECT h.id as "ID", u.ad as "ÜRÜN ADI", k.kalibre as "KALİBRE", k.glaze as "GLAZE", 
-                          h.tip as "TİP", h.kg as "STOK (KG)", h.palet as "PALET", h.tarih as "TARİH", h.saat as "SAAT", h.aciklama as "AÇIKLAMA"
+                          h.tip as "TİP", h.kg as "STOK (KG)", h.palet as "PALET", h.tarih as "TARİH", 
+                          TO_CHAR(h.saat AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Istanbul', 'HH24:MI:SS') as "SAAT", 
+                          h.aciklama as "AÇIKLAMA"
                           FROM stok_hareket h JOIN kalibre k ON k.id=h.kalibre_id JOIN urun u ON u.id=k.urun_id ORDER BY h.id DESC""", c)
     c.close()
     
-    # DataFrame'i % işareti ve virgül ile formatlama (Görsel için)
     h_df_disp = h_df.copy()
     h_df_disp["GLAZE"] = h_df_disp["GLAZE"].map(lambda x: f"%{x}")
     h_df_disp["STOK (KG)"] = h_df_disp["STOK (KG)"].map(lambda x: f"{x:,.0f}".replace(",", "."))
@@ -263,15 +252,13 @@ with tab_gecmis:
                         cur.execute("DELETE FROM lot WHERE id = (SELECT id FROM lot WHERE kalibre_id=%s AND giris_kg=%s ORDER BY id DESC LIMIT 1)", (k_id, kg))
                     else:
                         cur.execute("UPDATE lot SET kalan_kg = kalan_kg + %s, kalan_palet = kalan_palet + %s WHERE id = (SELECT id FROM lot WHERE kalibre_id=%s ORDER BY id DESC LIMIT 1)", (kg, palet, k_id))
-                    
                     cur.execute("DELETE FROM stok_hareket WHERE id=%s", (secili_id,))
                     c.commit(); c.close(); st.success(f"{secili_id} nolu işlem geri alındı."); st.rerun()
             except Exception as e:
                 st.error(f"Hata: {e}")
 
-
 # ==========================================
-# TAB 5: TÜM VERİLERİ YEDEKLE / YÜKLE
+# TAB 5: YEDEKLEME
 # ==========================================
 with tab_yedek:
     c1, c2 = st.columns(2)
@@ -285,7 +272,6 @@ with tab_yedek:
                 cols = [desc[0] for desc in cur.description]
                 yedek_verisi[tablo] = [dict(zip(cols, row)) for row in cur.fetchall()]
             c.close()
-            
             j_data = json.dumps(yedek_verisi, ensure_ascii=False, indent=4, default=str)
             dosya_adi = f"Fildisi_Grup_Yedek_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
             st.download_button("Dosyayı İndir", data=j_data, file_name=dosya_adi, mime="application/json")
@@ -299,27 +285,18 @@ with tab_yedek:
                 try:
                     yedek = json.load(yuklenen_dosya)
                     c = get_conn(); cur = c.cursor()
-                    
-                    # Tabloları temizle
                     for tablo in ["stok_hareket", "lot", "kalibre", "urun"]:
                         cur.execute(f"TRUNCATE TABLE {tablo} RESTART IDENTITY CASCADE")
-                    
-                    # Verileri ekle
                     for r in yedek.get("urun", []):
                         cur.execute("INSERT INTO urun (id, ad) VALUES (%s, %s)", (r['id'], r['ad']))
-                        
                     for r in yedek.get("kalibre", []):
-                        cur.execute("INSERT INTO kalibre (id, urun_id, kalibre, glaze, satis_fiyati) VALUES (%s, %s, %s, %s, %s)", 
-                                    (r['id'], r['urun_id'], r['kalibre'], r['glaze'], r['satis_fiyati']))
-                        
+                        cur.execute("INSERT INTO kalibre (id, urun_id, kalibre, glaze, satis_fiyati) VALUES (%s, %s, %s, %s, %s)", (r['id'], r['urun_id'], r['kalibre'], r['glaze'], r['satis_fiyati']))
                     for r in yedek.get("lot", []):
-                        cur.execute("INSERT INTO lot (id, kalibre_id, giris_kg, kalan_kg, giris_palet, kalan_palet, tarih) VALUES (%s, %s, %s, %s, %s, %s, %s)", 
-                                    (r['id'], r['kalibre_id'], r['giris_kg'], r['kalan_kg'], r['giris_palet'], r['kalan_palet'], r['tarih']))
-                        
+                        cur.execute("INSERT INTO lot (id, kalibre_id, giris_kg, kalan_kg, giris_palet, kalan_palet, tarih) VALUES (%s, %s, %s, %s, %s, %s, %s)", (r['id'], r['kalibre_id'], r['giris_kg'], r['kalan_kg'], r['giris_palet'], r['kalan_palet'], r['tarih']))
                     for r in yedek.get("stok_hareket", []):
-                        cur.execute("INSERT INTO stok_hareket (id, kalibre_id, tip, kg, palet, tarih, saat, aciklama) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", 
-                                    (r['id'], r['kalibre_id'], r['tip'], r['kg'], r['palet'], r['tarih'], r['saat'], r['aciklama']))
-                        
+                        cur.execute("INSERT INTO stok_hareket (id, kalibre_id, tip, kg, palet, tarih, saat, aciklama) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (r['id'], r['kalibre_id'], r['tip'], r['kg'], r['palet'], r['tarih'], r['saat'], r['aciklama']))
                     c.commit(); c.close(); st.success("Veriler başarıyla geri yüklendi!"); st.rerun()
                 except Exception as e:
                     st.error(f"Geri Yükleme Hatası: {e}")
+
+st.caption("Copyright © 2026 - Kutay Fildişi - Tüm hakları saklıdır.")
