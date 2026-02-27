@@ -141,7 +141,6 @@ with tab_yonetim:
         
         st.divider()
         # ÜRÜN İSMİ DÜZENLEME BÖLÜMÜ
-        st.write("📝 **Ürün İsmi Düzenle**")
         duzenle_sec = st.selectbox("Düzenlenecek Ürün:", df_urun['ad'].tolist() if not df_urun.empty else [], key="edit_urun_sec")
         yeni_isim = st.text_input("Yeni İsim:", key="edit_urun_name")
         if st.button("💾 Güncelle"):
@@ -285,4 +284,5 @@ with tab_yedek:
             except Exception as e: st.error(f"Hata: {e}")
 
 st.caption("Copyright © 2026 - Kutay Fildişi - Tüm hakları saklıdır.")
+
 
