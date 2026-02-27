@@ -48,21 +48,6 @@ def get_data():
         st.error(f"Veritabanı hatası: {e}")
         return None, None
 
-# Giriş Kontrolü
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-
-if not st.session_state.logged_in:
-    st.title("🔐 GİRİŞ")
-    user = st.text_input("Kullanıcı Adı", value="FLD2026")
-    pw = st.text_input("Şifre", type="password")
-    if st.button("Giriş Yap"):
-        if user == "FLD2026" and pw == "18811938": 
-            st.session_state.logged_in = True
-            st.rerun()
-        else:
-            st.error("Hatalı bilgiler!")
-else:
     st.title("🐘 FİLDİŞİ GRUP - ANLIK STOK")
     df_stok, df_hareket = get_data()
 
