@@ -1,24 +1,27 @@
 import streamlit as st
 import pandas as pd
 import psycopg2
-from datetime import datetime, timedelta, timezone  # timedelta ve timezone eklendi
+from datetime import datetime, timedelta, timezone
 import io
 import csv
 
 # --- Türkiye Saati Fonksiyonu ---
 def get_tr_now():
-    """Türkiye yerel saatini (UTC+3) döndürür."""
     return datetime.now(timezone(timedelta(hours=3)))
 
-# Sayfa Yapılandırması
+# Sayfa Yapılandırması (HER ZAMAN EN ÜSTTE OLMALI)
 st.set_page_config(page_title="FİLDİŞİ GRUP - STOK", layout="wide")
 
-# PostgreSQL Bağlantısı
+# PostgreSQL Bağlantı Bilgisi
 DB_URI = "postgresql://neondb_owner:npg_CuvX8ByQ5oFk@ep-cool-rain-abpiie2h-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require"
 
+# --- VERİ ÇEKME FONKSİYONU (Önbellekli) ---
+@st.cache_data(ttl=60) # Veriyi 60 saniye boyunca hafızada tutar, hızı artırır
 def get_data():
     try:
         conn = psycopg2.connect(DB_URI)
+        
+        # Stok Durumu Sorgusu
         query_stok = """
             SELECT u.ad as "ÜRÜN ADI", k.kalibre as "KALİBRE", k.glaze as "GLAZE", 
                    SUM(l.kalan_kg) as "STOK (KG)", SUM(l.kalan_palet) as "PALET", 
@@ -32,6 +35,7 @@ def get_data():
         """
         df_stok = pd.read_sql(query_stok, conn)
         
+        # Hareket Geçmişi Sorgusu
         query_harket = """
             SELECT h.tarih as "TARİH", h.saat as "SAAT", 
                    u.ad || ' - ' || k.kalibre || ' (%' || k.glaze || ')' as "ÜRÜN DETAY", 
@@ -45,80 +49,64 @@ def get_data():
         conn.close()
         return df_stok, df_hareket
     except Exception as e:
-        st.error(f"Veritabanı hatası: {e}")
-        return None, None
+        return None, str(e)
 
-    st.title("🐘 FİLDİŞİ GRUP - ANLIK STOK")
-    df_stok, df_hareket = get_data()
+# --- ANA UYGULAMA AKIŞI ---
+st.title("🐘 FİLDİŞİ GRUP - ANLIK STOK")
 
-    if df_stok is not None:
-        # Hesaplamalar
-        df_stok["TOPLAM DEĞER"] = df_stok["STOK (KG)"] * df_stok["BİRİM FİYAT"]
-        t_kg = df_stok["STOK (KG)"].sum()
-        t_palet = df_stok["PALET"].sum()
-        t_val = df_stok["TOPLAM DEĞER"].sum()
+# Verileri çek
+df_stok, df_hareket_veya_hata = get_data()
 
-        # Üst Metrikler
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Toplam Stok (KG)", f"{t_kg:,.0f}".replace(",", "."))
-        col2.metric("Toplam Palet", int(t_palet))
-        col3.metric("Toplam Değer", f"₺{t_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+# Hata kontrolü
+if df_stok is None:
+    st.error(f"Veritabanına bağlanılamadı: {df_hareket_veya_hata}")
+else:
+    # Veri İşleme
+    df_stok["TOPLAM DEĞER"] = df_stok["STOK (KG)"] * df_stok["BİRİM FİYAT"]
+    t_kg = df_stok["STOK (KG)"].sum()
+    t_palet = df_stok["PALET"].sum()
+    t_val = df_stok["TOPLAM DEĞER"].sum()
 
-        # --- EKRAN İÇİN GÖRSEL TABLO (GLAZE %50 YAPILDI) ---
-        df_display = df_stok.copy()
-        df_display["GLAZE"] = df_display["GLAZE"].map(lambda x: f"%{x}") 
-        df_display["STOK (KG)"] = df_display["STOK (KG)"].map(lambda x: f"{x:,.0f}".replace(",", "."))
-        df_display["PALET"] = df_display["PALET"].map(lambda x: f"{int(x)}")
-        df_display["BİRİM FİYAT"] = df_display["BİRİM FİYAT"].map(lambda x: f"₺{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-        df_display["TOPLAM DEĞER"] = df_display["TOPLAM DEĞER"].map(lambda x: f"₺{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-        
-        st.subheader("📊 Güncel Stok Durumu")
-        st.dataframe(df_display, use_container_width=True)
+    # Üst Metrik Paneli
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Toplam Stok (KG)", f"{t_kg:,.0f}".replace(",", "."))
+    m2.metric("Toplam Palet", int(t_palet))
+    m3.metric("Toplam Değer", f"₺{t_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
-        # --- CSV HAZIRLAMA ---
-        output = io.StringIO()
-        writer = csv.writer(output, delimiter=";")
-        
-        writer.writerow(["ÜRÜN ADI", "KALİBRE", "GLAZE", "STOK (KG)", "PALET", "TOPLAM DEĞER"])
-        
-        for _, row in df_stok.iterrows():
-            writer.writerow([
-                row["ÜRÜN ADI"], 
-                row["KALİBRE"], 
-                f"%{row['GLAZE']}", 
-                f"{row['STOK (KG)']:,.0f}".replace(",", ""), 
-                int(row["PALET"]), 
-                f"₺{row['TOPLAM DEĞER']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-            ])
-            
-        writer.writerow([])
-        writer.writerow([
-            "TOPLAM", 
-            "", 
-            "", 
-            f"{t_kg:,.0f}".replace(",", ""), 
-            int(t_palet), 
-            f"₺{t_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        ])
-        
-        st.download_button(
-            label="📥 Excel'e Aktar (CSV)",
-            data=output.getvalue().encode('utf-8-sig'),
-            file_name=f"Fildisi_Stok_Rapor_{get_tr_now().strftime('%d_%m_%Y')}.csv", # get_tr_now eklendi
-            mime="text/csv",
-        )
+    # Görselleştirme Tablosu
+    st.subheader("📊 Güncel Stok Durumu")
+    df_display = df_stok.copy()
+    df_display["GLAZE"] = df_display["GLAZE"].apply(lambda x: f"%{x}")
+    df_display["STOK (KG)"] = df_display["STOK (KG)"].apply(lambda x: f"{x:,.0f}".replace(",", "."))
+    df_display["BİRİM FİYAT"] = df_display["BİRİM FİYAT"].apply(lambda x: f"₺{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+    df_display["TOPLAM DEĞER"] = df_display["TOPLAM DEĞER"].apply(lambda x: f"₺{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+    
+    st.dataframe(df_display, use_container_width=True, hide_index=True)
 
-        st.divider()
+    # Excel (CSV) İndirme İşlemi
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=";")
+    writer.writerow(["ÜRÜN ADI", "KALİBRE", "GLAZE", "STOK (KG)", "PALET", "TOPLAM DEĞER"])
+    for _, row in df_stok.iterrows():
+        writer.writerow([row["ÜRÜN ADI"], row["KALİBRE"], f"%{row['GLAZE']}", int(row["STOK (KG)"]), int(row["PALET"]), f"{row['TOPLAM DEĞER']:.2f}"])
+    writer.writerow(["TOPLAM", "", "", int(t_kg), int(t_palet), f"{t_val:.2f}"])
 
-        # --- HAREKET GEÇMİŞİ ---
-        df_h_disp = df_hareket.copy()
-        df_h_disp["KG"] = df_h_disp["KG"].map(lambda x: f"{x:,.0f}".replace(",", "."))
-        df_h_disp["PALET"] = df_h_disp["PALET"].map(lambda x: f"{int(x)}")
-        
-        st.subheader("📜 Son 10 Stok Hareketi")
-        st.dataframe(df_h_disp, use_container_width=True, hide_index=True)
+    st.download_button(
+        label="📥 Excel'e Aktar (CSV)",
+        data=output.getvalue().encode('utf-8-sig'),
+        file_name=f"Fildisi_Stok_{get_tr_now().strftime('%d_%m_%Y')}.csv",
+        mime="text/csv",
+    )
 
-    if st.button("🔄 Verileri Yenile"):
-        st.rerun()
+    st.divider()
 
-    st.caption("Copyright © 2026 - Kutay Fildişi - Tüm hakları saklıdır.")
+    # Son Hareketler
+    st.subheader("📜 Son 10 Stok Hareketi")
+    st.dataframe(df_hareket_veya_hata, use_container_width=True, hide_index=True)
+
+# Manuel Yenileme Butonu
+if st.sidebar.button("🔄 Verileri Şimdi Yenile"):
+    st.cache_data.clear()
+    st.rerun()
+
+st.caption("Copyright © 2026 - Kutay Fildişi - Tüm hakları saklıdır.")
