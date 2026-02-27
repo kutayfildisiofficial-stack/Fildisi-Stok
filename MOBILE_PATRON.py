@@ -69,7 +69,7 @@ else:
 
     # Üst Metrik Paneli
     m1, m2, m3 = st.columns(3)
-    m1.metric("Toplam Stok (KG)", f"{t_kg:,.0f}".replace(",", "."))
+    m1.metric("Toplam Miktar (KG)", f"{t_kg:,.0f}".replace(",", "."))
     m2.metric("Toplam Palet", int(t_palet))
     m3.metric("Toplam Değer", f"₺{t_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
