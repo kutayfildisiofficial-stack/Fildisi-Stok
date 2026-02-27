@@ -52,7 +52,7 @@ def get_data():
         return None, str(e)
 
 # --- ANA UYGULAMA AKIŞI ---
-st.title("📝 ANLIK STOK VERİLERİ")
+st.title("📝 STOK DURUMU")
 
 # Verileri çek
 df_stok, df_hareket_veya_hata = get_data()
@@ -100,7 +100,7 @@ else:
     st.divider()
 
     # Son Hareketler
-    st.subheader("📜 SON STOK HAREKETLERİ")
+    st.subheader("📜 STOK HAREKETLERİ")
     st.dataframe(df_hareket_veya_hata, use_container_width=True, hide_index=True)
 
 # Manuel Yenileme Butonu
