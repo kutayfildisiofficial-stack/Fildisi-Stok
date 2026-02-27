@@ -168,7 +168,7 @@ with tab_yonetim:
         ekle_glaze = st.text_input("Glaze (%):")
         ekle_fiyat = st.text_input("Fiyat:")
         
-        if st.button("Kalibre/Glaze Ekle"):
+        if st.button("Kalibre/Glaze Tanımla"):
             if sec_urun_k and ekle_kalibre.strip() and ekle_glaze.strip():
                 f = safe_float(ekle_fiyat)
                 c = get_conn(); cur = c.cursor()
@@ -179,7 +179,7 @@ with tab_yonetim:
 
     st.divider()
     st.subheader("TANIM SİLME & FİYAT GÜNCELLEME")
-    yonet_kalibre = st.selectbox("Ürün-Kalibre-Glaze Seç:", kalibre_listesi, key="y_k_sec")
+    yonet_kalibre = st.selectbox("Tanım Seç:", kalibre_listesi, key="y_k_sec")
     
     col_sil, col_fiyat, col_btn = st.columns([2, 2, 2])
     if col_sil.button("❌ Seçili Tanımı Sil", use_container_width=True):
@@ -326,6 +326,7 @@ with tab_yedek:
                     c.commit(); c.close(); st.success("Veriler başarıyla geri yüklendi!"); st.rerun()
                 except Exception as e:
                     st.error(f"Geri Yükleme Hatası: {e}")
+
 
 
 
