@@ -71,7 +71,8 @@ else:
     m1, m2, m3 = st.columns(3)
     m1.metric("Toplam Miktar (KG)", f"{t_kg:,.0f}".replace(",", "."))
     m2.metric("Toplam Palet", int(t_palet))
-    m3.metric("Toplam Değer", f"₺{t_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+    # Metrik paneline (KDV Hariçtir) eklendi
+    m3.metric("Toplam Değer (KDV Hariçtir)", f"₺{t_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
     # Görselleştirme Tablosu Hazırlığı
     df_display = df_stok.copy()
@@ -105,10 +106,10 @@ else:
         # Satırda Ürün Detayını Oluştur
         urun_detay = f"{row['ÜRÜN ADI']} - {row['KALİBRE']} (%{row['GLAZE']})"
         
-        # --- DÜZELTME: KG değerini Excel bozmasın diye nokta/virgül olmadan ham sayı yazıyoruz ---
+        # KG değeri nokta/virgül olmadan ham sayı (Excel'in 1.000'i 1 yapmasını engeller)
         kg_degeri = int(row["STOK (KG)"])
         
-        # Diğer değerler istediğin formatta kalıyor
+        # Toplam Değer formatlı
         deger_str = f"₺{row['TOPLAM DEĞER']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         
         writer.writerow([
@@ -118,9 +119,9 @@ else:
             deger_str
         ])
     
-    # Toplam Satırı (Burada da KG ham sayı olarak yazıldı)
-    t_val_str = f"₺{t_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-    writer.writerow(["TOPLAM", int(t_kg), int(t_palet), t_val_str])
+    # Toplam Satırı (CSV'ye de KDV Hariçtir notu eklendi)
+    t_val_str = f"₺{t_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    writer.writerow(["TOPLAM (KDV HARİÇTİR)", int(t_kg), int(t_palet), t_val_str])
 
     st.download_button(
         label="📥 Excel'e Aktar (CSV)",
@@ -133,7 +134,7 @@ else:
 
     # Son Hareketler
     st.subheader("📜 STOK HAREKETLERİ")
-    st.dataframe(df_hareket_ve_hata if 'df_hareket_ve_hata' in locals() else df_hareket_veya_hata, use_container_width=True, hide_index=True)
+    st.dataframe(df_hareket_veya_hata, use_container_width=True, hide_index=True)
 
 # Manuel Yenileme Butonu
 if st.sidebar.button("🔄 Verileri Şimdi Yenile"):
