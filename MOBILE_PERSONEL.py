@@ -122,7 +122,7 @@ with tab_stok:
         detay = f"{r['ad']} {r['kalibre']} (%{r['glaze']})"
         display_data.append([detay, f"{kg:,.0f}".replace(",", "."), int(palet), format_tl(fiyat), format_tl(val)])
     
-    st.dataframe(pd.DataFrame(display_data, columns=["ÜRÜN DETAYI", "STOK (KG)", "PALET", "BİRİM FİYAT", "TOPLAM DEĞER"]), use_container_width=True)
+    st.dataframe(pd.DataFrame(display_data, columns=["ÜRÜN DETAYI", "STOK (KG)", "PALET", "BİRİM FİYAT", "TOPLAM DEĞER"]), use_container_width=True, hide_index=True)
 
 # ==========================================
 # TAB 2: ÜRÜN & KALİBRE YÖNETİMİ
@@ -267,4 +267,5 @@ with tab_yedek:
                 for r in data.get("stok_hareket", []): cur.execute("INSERT INTO stok_hareket (id, kalibre_id, tip, kg, palet, tarih, saat, aciklama) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (r['id'], r['kalibre_id'], r['tip'], r['kg'], r['palet'], r['tarih'], r['saat'], r['aciklama']))
                 c.commit(); c.close(); st.success("Geri yüklendi!"); st.rerun()
             except Exception as e: st.error(f"Hata: {e}")
+
 
